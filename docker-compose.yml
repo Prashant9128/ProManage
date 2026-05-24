@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7
+    container_name: promanage-mongodb
+    ports:
+      - '27018:27017'
+    volumes:
+      - promanage_db_data:/data/db
+    networks:
+      - promanage-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: promanage-backend
+    ports:
+      - '5000:5000'
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    environment:
+      - PORT=5000
+      - MONGODB_URI=mongodb://mongodb:27017/promanage
+      - JWT_SECRET=promanage_super_secret_key_2026
+      - JWT_EXPIRE=7d
+      - COOKIE_EXPIRE=7
+      - NODE_ENV=development
+      - FRONTEND_URL=http://localhost:5173
+    depends_on:
+      - mongodb
+    networks:
+      - promanage-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: promanage-frontend
+    ports:
+      - '5173:5173'
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://backend:5000
+    depends_on:
+      - backend
+    networks:
+      - promanage-network
+
+volumes:
+  promanage_db_data:
+
+networks:
+  promanage-network:
+    driver: bridge
