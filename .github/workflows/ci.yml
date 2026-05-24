@@ -13,6 +13,9 @@ jobs:
     env:
       MONGOMS_VERSION: '7.0.5'
       DEBUG: 'mongodb-memory-server:*'
+      JWT_SECRET: 'promanage_super_secret_key_2026'
+      JWT_EXPIRE: '7d'
+      NODE_ENV: 'development'
 
     steps:
       - name: Checkout repository
