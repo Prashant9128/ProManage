@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Plus, Clock, Tag, Users, FolderOpen } from 'lucide-react';
+import { ArrowLeft, Plus, Clock, Tag, Users, FolderOpen, Loader2 } from 'lucide-react';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
 
@@ -15,7 +15,9 @@ export default function ProjectDetail() {
   const [filter, setFilter] = useState('all');
   const [loading, setLoading] = useState(true);
   const [showAddTask, setShowAddTask] = useState(false);
-  const [newTask, setNewTask] = useState({ title: '', priority: 'medium', status: 'todo' });
+  const [newTask, setNewTask] = useState({ title: '', description: '', priority: 'medium', status: 'todo', category: 'frontend', labels: '' });
+  const [aiPredicting, setAiPredicting] = useState(false);
+  const [aiPrediction, setAiPrediction] = useState(null);
 
   useEffect(() => {
     setLoading(true);
@@ -30,10 +32,18 @@ export default function ProjectDetail() {
   const handleAddTask = async (e) => {
     e.preventDefault();
     try {
-      const res = await api.post('/tasks', { ...newTask, project: id });
+      const labelsArray = newTask.labels 
+        ? newTask.labels.split(',').map(l => l.trim()).filter(l => l.length > 0)
+        : [];
+      const res = await api.post('/tasks', { 
+        ...newTask, 
+        project: id,
+        labels: labelsArray
+      });
       setTasks([...tasks, res.data.task]);
       setShowAddTask(false);
-      setNewTask({ title: '', priority: 'medium', status: 'todo' });
+      setNewTask({ title: '', description: '', priority: 'medium', status: 'todo', category: 'frontend', labels: '' });
+      setAiPrediction(null);
       toast.success('Task added!');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to add task');
@@ -52,11 +62,62 @@ export default function ProjectDetail() {
 
   const handleStatusChange = async (taskId, newStatus) => {
     try {
-      const res = await api.put(`/tasks/${taskId}`, { status: newStatus });
+      await api.put(`/tasks/${taskId}`, { status: newStatus });
       setTasks(tasks.map(t => t._id === taskId ? { ...t, status: newStatus } : t));
     } catch (err) {
       toast.error('Failed to update status');
     }
+  };
+
+  const handleGetAiEstimation = async () => {
+    if (!newTask.title) {
+      toast.error('Please enter a task title first');
+      return;
+    }
+    setAiPredicting(true);
+    setAiPrediction(null);
+    try {
+      const res = await api.post('/analytics/predict-task', {
+        title: newTask.title,
+        description: newTask.description,
+        priority: newTask.priority,
+        category: newTask.category
+      });
+      if (res.data.success) {
+        setAiPrediction(res.data.prediction);
+        toast.success('AI estimation complete!');
+      }
+    } catch (err) {
+      toast.error('Failed to get AI estimation');
+    } finally {
+      setAiPredicting(false);
+    }
+  };
+
+  const applyAiEstimation = () => {
+    if (!aiPrediction) return;
+    const estText = `⏱️ AI Estimate: ${aiPrediction.estimatedHours} hours (${aiPrediction.estimatedDays} days)`;
+    setNewTask(prev => {
+      const newDesc = prev.description 
+        ? `${prev.description}\n\n${estText}`
+        : estText;
+      
+      const estLabel = `Est: ${aiPrediction.estimatedHours}h`;
+      const currentLabels = prev.labels 
+        ? prev.labels.split(',').map(s => s.trim()) 
+        : [];
+      if (!currentLabels.includes(estLabel)) {
+        currentLabels.push(estLabel);
+      }
+      
+      return {
+        ...prev,
+        description: newDesc,
+        labels: currentLabels.join(', ')
+      };
+    });
+    setAiPrediction(null);
+    toast.success('Estimation applied to task details!');
   };
 
   const filtered = filter === 'all' ? tasks : tasks.filter(t => t.status === filter);
@@ -104,7 +165,11 @@ export default function ProjectDetail() {
             <p className="text-sm text-dark-400">{project.key} · {project.description}</p>
           </div>
         </div>
-        <button onClick={() => setShowAddTask(true)} className="flex items-center gap-2 bg-gradient-to-r from-primary-500 to-cyan-500 text-white px-4 py-2 rounded-xl font-medium text-sm hover:shadow-lg hover:shadow-primary-500/25 transition-all">
+        <button onClick={() => {
+          setNewTask({ title: '', description: '', priority: 'medium', status: 'todo', category: 'frontend', labels: '' });
+          setAiPrediction(null);
+          setShowAddTask(true);
+        }} className="flex items-center gap-2 bg-gradient-to-r from-primary-500 to-cyan-500 text-white px-4 py-2 rounded-xl font-medium text-sm hover:shadow-lg hover:shadow-primary-500/25 transition-all">
           <Plus className="w-4 h-4" /> Add Task
         </button>
       </div>
@@ -133,7 +198,11 @@ export default function ProjectDetail() {
               : `No tasks with status "${filter.replace('-', ' ')}".`}
           </p>
           {filter === 'all' && (
-            <button onClick={() => setShowAddTask(true)} className="flex items-center gap-2 px-5 py-2.5 bg-primary-500/15 text-primary-400 rounded-xl text-sm font-medium hover:bg-primary-500/25 transition-all">
+            <button onClick={() => {
+              setNewTask({ title: '', description: '', priority: 'medium', status: 'todo', category: 'frontend', labels: '' });
+              setAiPrediction(null);
+              setShowAddTask(true);
+            }} className="flex items-center gap-2 px-5 py-2.5 bg-primary-500/15 text-primary-400 rounded-xl text-sm font-medium hover:bg-primary-500/25 transition-all">
               <Plus className="w-4 h-4" /> Add First Task
             </button>
           )}
@@ -158,6 +227,9 @@ export default function ProjectDetail() {
                   ✕
                 </button>
               </div>
+              {task.description && (
+                <p className="text-xs text-dark-400 mt-2 ml-5 line-clamp-2 whitespace-pre-line">{task.description}</p>
+              )}
               <div className="flex items-center gap-4 mt-2.5 ml-5">
                 {task.labels?.map((l, j) => <span key={j} className="text-xs text-dark-500 flex items-center gap-1"><Tag className="w-3 h-3" />{l}</span>)}
                 {task.deadline && <span className="text-xs text-dark-500 flex items-center gap-1"><Clock className="w-3 h-3" />{new Date(task.deadline).toLocaleDateString()}</span>}
@@ -169,15 +241,24 @@ export default function ProjectDetail() {
 
       {/* Add Task Modal */}
       {showAddTask && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowAddTask(false)}>
-          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-dark-900 border border-dark-800 rounded-2xl p-6 w-full max-w-md" onClick={e => e.stopPropagation()}>
-            <h2 className="text-xl font-bold text-white mb-6">Add Task</h2>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto" onClick={() => setShowAddTask(false)}>
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-dark-900 border border-dark-800 rounded-2xl p-6 w-full max-w-lg my-8" onClick={e => e.stopPropagation()}>
+            <h2 className="text-xl font-bold text-white mb-1">Add Task</h2>
+            <p className="text-sm text-dark-500 mb-6">Adding to <span className="text-dark-300 font-medium">{project.name}</span></p>
             <form onSubmit={handleAddTask} className="space-y-4">
               <div>
                 <label className="block text-sm text-dark-300 mb-1.5">Task Title</label>
-                <input type="text" value={newTask.title} onChange={e => setNewTask({ ...newTask, title: e.target.value })} required
+                <input type="text" value={newTask.title} onChange={e => setNewTask({ ...newTask, title: e.target.value })} required autoFocus
                   className="w-full px-4 py-2.5 bg-dark-800/50 border border-dark-700/50 rounded-xl text-white focus:outline-none focus:border-primary-500/50 transition-all" placeholder="e.g. Implement user authentication" />
               </div>
+
+              <div>
+                <label className="block text-sm text-dark-300 mb-1.5">Description</label>
+                <textarea value={newTask.description} onChange={e => setNewTask({ ...newTask, description: e.target.value })}
+                  placeholder="Provide task details or let AI append estimations..." rows={3}
+                  className="w-full px-4 py-2.5 bg-dark-800/50 border border-dark-700/50 rounded-xl text-white placeholder-dark-600 focus:outline-none focus:border-primary-500/50 transition-all resize-none" />
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm text-dark-300 mb-1.5">Priority</label>
@@ -189,6 +270,21 @@ export default function ProjectDetail() {
                   </select>
                 </div>
                 <div>
+                  <label className="block text-sm text-dark-300 mb-1.5">Category</label>
+                  <select value={newTask.category || 'frontend'} onChange={e => setNewTask({ ...newTask, category: e.target.value })}
+                    className="w-full px-4 py-2.5 bg-dark-800/50 border border-dark-700/50 rounded-xl text-white focus:outline-none focus:border-primary-500/50 transition-all">
+                    <option value="frontend">Frontend / UI</option>
+                    <option value="backend">Backend / API</option>
+                    <option value="database">Database Schema</option>
+                    <option value="devops">CI/CD & DevOps</option>
+                    <option value="bug">Bug Fix</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
                   <label className="block text-sm text-dark-300 mb-1.5">Status</label>
                   <select value={newTask.status} onChange={e => setNewTask({ ...newTask, status: e.target.value })}
                     className="w-full px-4 py-2.5 bg-dark-800/50 border border-dark-700/50 rounded-xl text-white focus:outline-none focus:border-primary-500/50 transition-all">
@@ -197,7 +293,54 @@ export default function ProjectDetail() {
                     <option value="review">Review</option>
                   </select>
                 </div>
+                <div>
+                  <label className="block text-sm text-dark-300 mb-1.5">Labels (comma-separated)</label>
+                  <input type="text" value={newTask.labels} onChange={e => setNewTask({ ...newTask, labels: e.target.value })}
+                    placeholder="e.g. design, api, blocker"
+                    className="w-full px-4 py-2.5 bg-dark-800/50 border border-dark-700/50 rounded-xl text-white placeholder-dark-600 focus:outline-none focus:border-primary-500/50 transition-all" />
+                </div>
               </div>
+
+              {/* AI Prediction Section */}
+              <div className="border border-dark-800 bg-dark-950/20 rounded-xl p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 bg-primary-400 rounded-full animate-ping" />
+                    <span className="text-sm font-semibold text-white">AI Complexity Predictor</span>
+                  </div>
+                  <button type="button" onClick={handleGetAiEstimation} disabled={aiPredicting}
+                    className="text-xs px-3 py-1.5 bg-primary-500/10 text-primary-400 border border-primary-500/25 hover:bg-primary-500/25 rounded-lg disabled:opacity-50 flex items-center gap-1 transition-all">
+                    {aiPredicting && <Loader2 className="w-3 h-3 animate-spin" />}
+                    ⚡ Ask AI Estimator
+                  </button>
+                </div>
+
+                {aiPrediction && (
+                  <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} className="mt-3 space-y-2 text-xs">
+                    <div className="flex justify-between border-b border-dark-800 pb-2">
+                      <span className="text-dark-400">Estimated Duration:</span>
+                      <strong className="text-white">{aiPrediction.estimatedHours} hours (~{aiPrediction.estimatedDays} days)</strong>
+                    </div>
+                    <div className="flex justify-between border-b border-dark-800 pb-2">
+                      <span className="text-dark-400">Model Confidence:</span>
+                      <strong className="text-emerald-400">{aiPrediction.confidenceScore}%</strong>
+                    </div>
+                    <div className="text-dark-500 pt-1">
+                      <span className="font-medium text-dark-300 block mb-1">AI Breakdown:</span>
+                      <ul className="list-disc list-inside space-y-0.5">
+                        {aiPrediction.breakdown.map((item, idx) => (
+                          <li key={idx}>{item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                    <button type="button" onClick={applyAiEstimation}
+                      className="w-full mt-2 py-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/25 hover:bg-emerald-500/25 rounded-lg font-medium transition-all text-center">
+                      Apply Prediction to Task Details
+                    </button>
+                  </motion.div>
+                )}
+              </div>
+
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setShowAddTask(false)} className="flex-1 py-2.5 border border-dark-700 rounded-xl text-dark-300 hover:bg-dark-800/50 transition-colors text-sm">Cancel</button>
                 <button type="submit" className="flex-1 py-2.5 bg-gradient-to-r from-primary-500 to-cyan-500 text-white rounded-xl font-medium text-sm">Add Task</button>

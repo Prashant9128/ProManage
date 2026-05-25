@@ -112,7 +112,7 @@ const pipelinesData = [
   }
 ];
 
-const dockerContainers = [
+let dockerContainers = [
   { id: 'ctn-001', name: 'promanage-api', image: 'promanage/api:latest', status: 'running', cpu: '12%', memory: '256MB', ports: '5000:5000', uptime: '5d 12h' },
   { id: 'ctn-002', name: 'promanage-web', image: 'promanage/web:latest', status: 'running', cpu: '8%', memory: '128MB', ports: '3000:3000', uptime: '5d 12h' },
   { id: 'ctn-003', name: 'promanage-db', image: 'mongo:7', status: 'running', cpu: '5%', memory: '512MB', ports: '27017:27017', uptime: '14d 3h' },
@@ -141,6 +141,42 @@ router.get('/pipelines/:id', authenticate, (req, res) => {
 
 router.get('/containers', authenticate, (req, res) => {
   res.json({ success: true, containers: dockerContainers });
+});
+
+router.post('/containers/:id/start', authenticate, (req, res) => {
+  const container = dockerContainers.find(c => c.id === req.params.id);
+  if (!container) return res.status(404).json({ success: false, message: 'Container not found' });
+  
+  container.status = 'running';
+  container.cpu = `${Math.floor(Math.random() * 12) + 4}%`;
+  container.memory = `${Math.floor(Math.random() * 100) + 120}MB`;
+  container.uptime = '1m';
+  
+  res.json({ success: true, container });
+});
+
+router.post('/containers/:id/stop', authenticate, (req, res) => {
+  const container = dockerContainers.find(c => c.id === req.params.id);
+  if (!container) return res.status(404).json({ success: false, message: 'Container not found' });
+  
+  container.status = 'stopped';
+  container.cpu = '0%';
+  container.memory = '0MB';
+  container.uptime = '-';
+  
+  res.json({ success: true, container });
+});
+
+router.post('/containers/:id/restart', authenticate, (req, res) => {
+  const container = dockerContainers.find(c => c.id === req.params.id);
+  if (!container) return res.status(404).json({ success: false, message: 'Container not found' });
+  
+  container.status = 'running';
+  container.cpu = `${Math.floor(Math.random() * 18) + 6}%`;
+  container.memory = `${Math.floor(Math.random() * 150) + 160}MB`;
+  container.uptime = '1s';
+  
+  res.json({ success: true, container });
 });
 
 router.get('/deployments', authenticate, (req, res) => {

@@ -1,32 +1,10 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { GitBranch, CheckCircle2, XCircle, Loader2, Clock, Box, Server, Rocket, AlertTriangle } from 'lucide-react';
+import { GitBranch, CheckCircle2, XCircle, Loader2, Clock, Box, Server, Rocket, AlertTriangle, Play, StopCircle, RotateCw } from 'lucide-react';
 import api from '../utils/api';
 
-const fallbackPipelines = [
-  { id: 'p1', name: 'Frontend Deploy', repo: 'promanage/frontend', branch: 'main', status: 'success', duration: '3m 42s', commit: { message: 'feat: add dashboard analytics', hash: 'a1b2c3d', author: 'Alex Chen' }, stages: [{ name: 'Checkout', status: 'success' },{ name: 'Install', status: 'success' },{ name: 'Lint', status: 'success' },{ name: 'Test', status: 'success' },{ name: 'Build', status: 'success' },{ name: 'Deploy', status: 'success' }], environment: 'production', startedAt: new Date(Date.now()-1800000).toISOString() },
-  { id: 'p2', name: 'Backend API', repo: 'promanage/backend', branch: 'develop', status: 'running', duration: '2m 15s', commit: { message: 'fix: resolve auth middleware', hash: 'e4f5g6h', author: 'Sarah Kim' }, stages: [{ name: 'Checkout', status: 'success' },{ name: 'Install', status: 'success' },{ name: 'Lint', status: 'success' },{ name: 'Test', status: 'running' },{ name: 'Build', status: 'pending' },{ name: 'Deploy', status: 'pending' }], environment: 'staging', startedAt: new Date(Date.now()-135000).toISOString() },
-  { id: 'p3', name: 'Database Migration', repo: 'promanage/infra', branch: 'feature/schema-v2', status: 'failed', duration: '1m 58s', commit: { message: 'chore: update user schema', hash: 'i7j8k9l', author: 'Mike Johnson' }, stages: [{ name: 'Checkout', status: 'success' },{ name: 'Validate', status: 'success' },{ name: 'Backup', status: 'success' },{ name: 'Migrate', status: 'failed' },{ name: 'Verify', status: 'skipped' },{ name: 'Notify', status: 'skipped' }], environment: 'development', startedAt: new Date(Date.now()-3600000).toISOString() },
-  { id: 'p4', name: 'Mobile App Build', repo: 'promanage/mobile', branch: 'main', status: 'success', duration: '8m 12s', commit: { message: 'release: v2.4.0', hash: 'm1n2o3p', author: 'Emily Davis' }, stages: [{ name: 'Checkout', status: 'success' },{ name: 'Install', status: 'success' },{ name: 'Test', status: 'success' },{ name: 'Build iOS', status: 'success' },{ name: 'Build Android', status: 'success' },{ name: 'Publish', status: 'success' }], environment: 'production', startedAt: new Date(Date.now()-7200000).toISOString() },
-  { id: 'p5', name: 'E2E Tests', repo: 'promanage/e2e', branch: 'main', status: 'success', duration: '5m 30s', commit: { message: 'test: add kanban tests', hash: 'q4r5s6t', author: 'Alex Chen' }, stages: [{ name: 'Setup', status: 'success' },{ name: 'Start', status: 'success' },{ name: 'Auth', status: 'success' },{ name: 'Dashboard', status: 'success' },{ name: 'Tasks', status: 'success' },{ name: 'Teardown', status: 'success' }], environment: 'staging', startedAt: new Date(Date.now()-10800000).toISOString() },
-];
-
-const containers = [
-  { name: 'promanage-api', image: 'promanage/api:latest', status: 'running', cpu: '12%', memory: '256MB', uptime: '5d 12h' },
-  { name: 'promanage-web', image: 'promanage/web:latest', status: 'running', cpu: '8%', memory: '128MB', uptime: '5d 12h' },
-  { name: 'promanage-db', image: 'mongo:7', status: 'running', cpu: '5%', memory: '512MB', uptime: '14d 3h' },
-  { name: 'promanage-redis', image: 'redis:alpine', status: 'running', cpu: '2%', memory: '64MB', uptime: '14d 3h' },
-  { name: 'promanage-worker', image: 'promanage/worker:latest', status: 'stopped', cpu: '0%', memory: '0MB', uptime: '-' },
-];
-
-const deployments = [
-  { version: 'v2.4.0', environment: 'production', status: 'active', deployedBy: 'Alex Chen', deployedAt: new Date(Date.now()-86400000).toISOString() },
-  { version: 'v2.4.1-rc.1', environment: 'staging', status: 'active', deployedBy: 'Sarah Kim', deployedAt: new Date(Date.now()-3600000).toISOString() },
-  { version: 'v2.4.0-dev', environment: 'development', status: 'active', deployedBy: 'Mike Johnson', deployedAt: new Date(Date.now()-7200000).toISOString() },
-  { version: 'v2.3.9', environment: 'production', status: 'superseded', deployedBy: 'Emily Davis', deployedAt: new Date(Date.now()-172800000).toISOString() },
-  { version: 'v2.3.8', environment: 'production', status: 'superseded', deployedBy: 'Alex Chen', deployedAt: new Date(Date.now()-432000000).toISOString() },
-  { version: 'v2.3.7', environment: 'production', status: 'rolled-back', deployedBy: 'Sarah Kim', deployedAt: new Date(Date.now()-604800000).toISOString() },
-];
+const envBadge = { production: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20', staging: 'bg-amber-500/10 text-amber-400 border-amber-500/20', development: 'bg-blue-500/10 text-blue-400 border-blue-500/20' };
+const statusBg = { success: 'border-emerald-500/30', failed: 'border-red-500/30', running: 'border-blue-500/30' };
 
 const StatusIcon = ({ status }) => {
   if (status === 'success') return <CheckCircle2 className="w-4 h-4 text-emerald-400" />;
@@ -36,18 +14,69 @@ const StatusIcon = ({ status }) => {
   return <div className="w-4 h-4 rounded-full bg-dark-700" />;
 };
 
-const envBadge = { production: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20', staging: 'bg-amber-500/10 text-amber-400 border-amber-500/20', development: 'bg-blue-500/10 text-blue-400 border-blue-500/20' };
-const statusBg = { success: 'border-emerald-500/30', failed: 'border-red-500/30', running: 'border-blue-500/30' };
-
 export default function CICDMonitoring() {
-  const [pipelines, setPipelines] = useState(fallbackPipelines);
+  const [pipelines, setPipelines] = useState([]);
+  const [containers, setContainers] = useState([]);
+  const [deployments, setDeployments] = useState([]);
+  const [stats, setStats] = useState(null);
   const [tab, setTab] = useState('pipelines');
+  const [actionLoading, setActionLoading] = useState({});
+
+  const fetchData = async () => {
+    try {
+      const [pipeRes, ctnRes, depRes, statsRes] = await Promise.all([
+        api.get('/cicd/pipelines'),
+        api.get('/cicd/containers'),
+        api.get('/cicd/deployments'),
+        api.get('/cicd/stats')
+      ]);
+      if (pipeRes.data.success) setPipelines(pipeRes.data.pipelines);
+      if (ctnRes.data.success) setContainers(ctnRes.data.containers);
+      if (depRes.data.success) setDeployments(depRes.data.deployments);
+      if (statsRes.data.success) setStats(statsRes.data.stats);
+    } catch (err) {
+      console.error('Error fetching CICD metrics:', err);
+    }
+  };
 
   useEffect(() => {
-    api.get('/cicd/pipelines').then(res => { if (res.data.pipelines?.length) setPipelines(res.data.pipelines); }).catch(() => {});
+    fetchData();
+    const interval = setInterval(fetchData, 5000);
+    return () => clearInterval(interval);
   }, []);
 
-  const timeAgo = (d) => { const h = Math.floor((Date.now() - new Date(d).getTime()) / 60000); if (h < 60) return `${h}m ago`; return `${Math.floor(h / 60)}h ago`; };
+  const handleContainerAction = async (id, action) => {
+    setActionLoading(prev => ({ ...prev, [id]: action }));
+    try {
+      const res = await api.post(`/cicd/containers/${id}/${action}`);
+      if (res.data.success) {
+        setContainers(prev =>
+          prev.map(c => (c.id === id ? res.data.container : c))
+        );
+        // Refresh stats to reflect new running containers count
+        api.get('/cicd/stats').then(statsRes => {
+          if (statsRes.data.success) setStats(statsRes.data.stats);
+        });
+      }
+    } catch (err) {
+      console.error(`Error performing container ${action}:`, err);
+    } finally {
+      setActionLoading(prev => ({ ...prev, [id]: null }));
+    }
+  };
+
+  const timeAgo = (d) => {
+    const h = Math.floor((Date.now() - new Date(d).getTime()) / 60000);
+    if (h < 60) return `${h}m ago`;
+    return `${Math.floor(h / 60)}h ago`;
+  };
+
+  const statsList = [
+    { label: 'Pipelines', value: stats?.totalPipelines || '156', sub: 'total runs', icon: GitBranch, color: 'text-primary-400 bg-primary-500/10' },
+    { label: 'Success Rate', value: stats ? `${stats.successRate}%` : '94.2%', sub: 'last 30 days', icon: CheckCircle2, color: 'text-emerald-400 bg-emerald-500/10' },
+    { label: 'Avg Build', value: stats?.avgBuildTime || '4m 23s', sub: 'this week', icon: Clock, color: 'text-amber-400 bg-amber-500/10' },
+    { label: 'Containers', value: stats ? `${stats.activeContainers}/${stats.totalContainers}` : '4/5', sub: 'running', icon: Box, color: 'text-cyan-400 bg-cyan-500/10' },
+  ];
 
   return (
     <div className="space-y-6">
@@ -58,12 +87,7 @@ export default function CICDMonitoring() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { label: 'Pipelines', value: '156', sub: 'total runs', icon: GitBranch, color: 'text-primary-400 bg-primary-500/10' },
-          { label: 'Success Rate', value: '94.2%', sub: 'last 30 days', icon: CheckCircle2, color: 'text-emerald-400 bg-emerald-500/10' },
-          { label: 'Avg Build', value: '4m 23s', sub: 'this week', icon: Clock, color: 'text-amber-400 bg-amber-500/10' },
-          { label: 'Containers', value: '4/5', sub: 'running', icon: Box, color: 'text-cyan-400 bg-cyan-500/10' },
-        ].map((s, i) => {
+        {statsList.map((s, i) => {
           const Icon = s.icon;
           return (
             <motion.div key={i} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
@@ -131,20 +155,54 @@ export default function CICDMonitoring() {
       {tab === 'containers' && (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {containers.map((c, i) => (
-            <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-              className="bg-dark-900/50 border border-dark-800/50 rounded-2xl p-5">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <Box className="w-4 h-4 text-cyan-400" />
-                  <h3 className="font-semibold text-white text-sm">{c.name}</h3>
+            <motion.div key={c.id || i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
+              className="bg-dark-900/50 border border-dark-800/50 rounded-2xl p-5 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Box className="w-4 h-4 text-cyan-400" />
+                    <h3 className="font-semibold text-white text-sm">{c.name}</h3>
+                  </div>
+                  <span className={`w-2.5 h-2.5 rounded-full ${c.status === 'running' ? 'bg-emerald-500' : 'bg-red-500'}`} />
                 </div>
-                <span className={`w-2.5 h-2.5 rounded-full ${c.status === 'running' ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                <p className="text-xs text-dark-500 mb-3">{c.image}</p>
+                <div className="grid grid-cols-3 gap-2 mb-4">
+                  <div className="bg-dark-800/30 rounded-lg p-2 text-center"><p className="text-xs text-dark-500">CPU</p><p className="text-sm font-medium text-white">{c.cpu}</p></div>
+                  <div className="bg-dark-800/30 rounded-lg p-2 text-center"><p className="text-xs text-dark-500">Memory</p><p className="text-sm font-medium text-white">{c.memory}</p></div>
+                  <div className="bg-dark-800/30 rounded-lg p-2 text-center"><p className="text-xs text-dark-500">Uptime</p><p className="text-sm font-medium text-white">{c.uptime}</p></div>
+                </div>
               </div>
-              <p className="text-xs text-dark-500 mb-3">{c.image}</p>
-              <div className="grid grid-cols-3 gap-2">
-                <div className="bg-dark-800/30 rounded-lg p-2 text-center"><p className="text-xs text-dark-500">CPU</p><p className="text-sm font-medium text-white">{c.cpu}</p></div>
-                <div className="bg-dark-800/30 rounded-lg p-2 text-center"><p className="text-xs text-dark-500">Memory</p><p className="text-sm font-medium text-white">{c.memory}</p></div>
-                <div className="bg-dark-800/30 rounded-lg p-2 text-center"><p className="text-xs text-dark-500">Uptime</p><p className="text-sm font-medium text-white">{c.uptime}</p></div>
+              
+              <div className="border-t border-dark-800/50 pt-3 flex gap-2 justify-end">
+                {c.status === 'running' ? (
+                  <>
+                    <button 
+                      onClick={() => handleContainerAction(c.id, 'stop')}
+                      disabled={actionLoading[c.id]}
+                      className="px-3 py-1.5 rounded-lg text-xs font-medium bg-red-500/10 text-red-400 hover:bg-red-500/20 disabled:opacity-50 flex items-center gap-1 transition-all"
+                    >
+                      {actionLoading[c.id] === 'stop' ? <Loader2 className="w-3 h-3 animate-spin" /> : <StopCircle className="w-3.5 h-3.5" />}
+                      Stop
+                    </button>
+                    <button 
+                      onClick={() => handleContainerAction(c.id, 'restart')}
+                      disabled={actionLoading[c.id]}
+                      className="px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 disabled:opacity-50 flex items-center gap-1 transition-all"
+                    >
+                      {actionLoading[c.id] === 'restart' ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCw className="w-3.5 h-3.5" />}
+                      Restart
+                    </button>
+                  </>
+                ) : (
+                  <button 
+                    onClick={() => handleContainerAction(c.id, 'start')}
+                    disabled={actionLoading[c.id]}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 disabled:opacity-50 flex items-center gap-1 transition-all"
+                  >
+                    {actionLoading[c.id] === 'start' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
+                    Start
+                  </button>
+                )}
               </div>
             </motion.div>
           ))}
