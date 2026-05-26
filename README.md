@@ -1,5 +1,7 @@
 # ProManage 🚀
+[![ProManage CI](https://github.com/Prashant9128/ProManage/actions/workflows/ci.yml/badge.svg)](https://github.com/Prashant9128/ProManage/actions/workflows/ci.yml)
 > A modern, premium, and feature-rich Task Management & DevOps Platform built on the MERN stack.
+
 
 ProManage integrates advanced software project management capabilities like Kanban boards and team collaboration with real-time DevOps insights including CI/CD pipelines monitoring, container status tracking, and deployment logs.
 
