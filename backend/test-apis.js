@@ -47,7 +47,7 @@ async function main() {
   console.log('📦 Starting in-memory MongoDB...');
   const mongod = await MongoMemoryServer.create({
     instance: {
-      startupTimeout: 120000
+      launchTimeout: 120000
     }
   });
   const uri = mongod.getUri();
