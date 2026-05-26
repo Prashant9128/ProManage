@@ -45,7 +45,11 @@ async function main() {
 
   // Start in-memory MongoDB
   console.log('📦 Starting in-memory MongoDB...');
-  const mongod = await MongoMemoryServer.create();
+  const mongod = await MongoMemoryServer.create({
+    instance: {
+      startupTimeout: 120000
+    }
+  });
   const uri = mongod.getUri();
   await mongoose.connect(uri);
   console.log('✅ MongoDB + Mongoose ready\n');
