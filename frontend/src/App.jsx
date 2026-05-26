@@ -15,6 +15,7 @@ import CICDMonitoring from './pages/CICDMonitoring';
 import Settings from './pages/Settings';
 import AdminPanel from './pages/AdminPanel';
 
+
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
   if (loading) return <LoadingScreen />;

@@ -29,4 +29,5 @@ yarn-error.log*
 Thumbs.db
 
 # Presentation slides
-*.pptx
+# *.pptx
+

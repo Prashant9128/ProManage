@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Clock, Tag, MessageSquare, Trash2, GripVertical, Layers, Loader2 } from 'lucide-react';
 import api from '../utils/api';
@@ -25,6 +26,9 @@ export default function KanbanBoard() {
   const [projects, setProjects] = useState([]);
   const [selectedProject, setSelectedProject] = useState('all');
 
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeFilter = searchParams.get('filter') || 'all';
+
   // AI Task Estimation states
   const [aiPredicting, setAiPredicting] = useState(false);
   const [aiPrediction, setAiPrediction] = useState(null);
@@ -48,6 +52,23 @@ export default function KanbanBoard() {
         const projId = typeof t.project === 'object' ? t.project?._id : t.project;
         return projId === selectedProject;
       });
+
+  // Filter columns based on URL search query
+  const renderedColumns = columns.filter(col => {
+    if (activeFilter === 'completed') {
+      return col.id === 'completed';
+    }
+    if (activeFilter === 'pending') {
+      return col.id !== 'completed';
+    }
+    return true;
+  });
+
+  const gridColsClass = renderedColumns.length === 1 
+    ? 'grid grid-cols-1 max-w-xl mx-auto gap-4' 
+    : renderedColumns.length === 3 
+    ? 'grid grid-cols-1 md:grid-cols-3 gap-4' 
+    : 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4';
 
   // === Native HTML5 Drag & Drop ===
   const handleDragStart = (e, task) => {
@@ -202,9 +223,37 @@ export default function KanbanBoard() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white">Kanban Board</h1>
-          <p className="text-dark-400 mt-1">{filteredTasks.length} tasks across {columns.length} columns</p>
+          <p className="text-dark-400 mt-1">{filteredTasks.length} tasks across {renderedColumns.length} columns</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Segmented Filter Control */}
+          <div className="flex bg-dark-900/60 p-1 rounded-xl border border-dark-800">
+            {[
+              { id: 'all', label: 'All Tasks' },
+              { id: 'pending', label: 'Pending' },
+              { id: 'completed', label: 'Completed' }
+            ].map(opt => (
+              <button
+                key={opt.id}
+                onClick={() => {
+                  if (opt.id === 'all') {
+                    searchParams.delete('filter');
+                  } else {
+                    searchParams.set('filter', opt.id);
+                  }
+                  setSearchParams(searchParams);
+                }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  activeFilter === opt.id
+                    ? 'bg-primary-500 text-white shadow-sm'
+                    : 'text-dark-400 hover:text-dark-200'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+
           {/* Project Filter */}
           <select value={selectedProject} onChange={e => setSelectedProject(e.target.value)}
             className="px-3 py-2 bg-dark-800/50 border border-dark-700/50 rounded-xl text-sm text-dark-300 focus:outline-none focus:border-primary-500/50 transition-all">
@@ -221,8 +270,8 @@ export default function KanbanBoard() {
 
       {/* Kanban Columns */}
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-          {columns.map(col => (
+        <div className={gridColsClass}>
+          {renderedColumns.map(col => (
             <div key={col.id} className="bg-dark-900/30 rounded-2xl p-3">
               <div className="flex items-center gap-2 mb-3 px-1">
                 <div className="w-2.5 h-2.5 rounded-full skeleton" />
@@ -261,8 +310,8 @@ export default function KanbanBoard() {
           </button>
         </motion.div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-          {columns.map(col => {
+        <div className={gridColsClass}>
+          {renderedColumns.map(col => {
             const colTasks = filteredTasks.filter(t => t.status === col.id);
             const isOver = dragOverColumn === col.id && draggedTask?.status !== col.id;
             return (
@@ -514,4 +563,3 @@ export default function KanbanBoard() {
     </div>
   );
 }
-

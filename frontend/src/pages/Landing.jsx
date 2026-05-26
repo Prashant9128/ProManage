@@ -1,16 +1,17 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Zap, BarChart3, Users, GitBranch, Shield, Columns3, ArrowRight, Check, Star, ChevronRight } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 const fadeUp = { hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0 } };
 
 const features = [
-  { icon: Columns3, title: 'Kanban Boards', desc: 'Drag-and-drop task management with real-time status tracking and smart workflows.', color: 'from-primary-500 to-primary-700' },
-  { icon: GitBranch, title: 'CI/CD Monitoring', desc: 'Visualize your deployment pipelines, Docker containers, and build statuses.', color: 'from-cyan-500 to-cyan-700' },
-  { icon: BarChart3, title: 'Analytics Dashboard', desc: 'Rich analytics with interactive charts, team productivity insights, and reports.', color: 'from-violet-500 to-violet-700' },
-  { icon: Users, title: 'Team Collaboration', desc: 'Assign tasks, share comments, track activity, and work together seamlessly.', color: 'from-emerald-500 to-emerald-700' },
-  { icon: Shield, title: 'Role-Based Access', desc: 'Admin, Manager, and Developer roles with secure JWT authentication.', color: 'from-amber-500 to-amber-700' },
-  { icon: Zap, title: 'AI Assistant', desc: 'Smart task recommendations and AI-powered productivity insights.', color: 'from-rose-500 to-rose-700' },
+  { icon: Columns3, title: 'Kanban Boards', desc: 'Drag-and-drop task management with real-time status tracking and smart workflows.', color: 'from-primary-500 to-primary-700', path: '/app/kanban' },
+  { icon: GitBranch, title: 'CI/CD Monitoring', desc: 'Visualize your deployment pipelines, Docker containers, and build statuses.', color: 'from-cyan-500 to-cyan-700', path: '/app/cicd' },
+  { icon: BarChart3, title: 'Analytics Dashboard', desc: 'Rich analytics with interactive charts, team productivity insights, and reports.', color: 'from-violet-500 to-violet-700', path: '/app/analytics' },
+  { icon: Users, title: 'Team Collaboration', desc: 'Assign tasks, share comments, track activity, and work together seamlessly.', color: 'from-emerald-500 to-emerald-700', path: '/app/team' },
+  { icon: Shield, title: 'Role-Based Access', desc: 'Admin, Manager, and Developer roles with secure JWT authentication.', color: 'from-amber-500 to-amber-700', path: '/app/admin' },
+  { icon: Zap, title: 'AI Assistant', desc: 'Smart task recommendations and AI-powered productivity insights.', color: 'from-rose-500 to-rose-700', path: '/app/kanban' },
 ];
 
 const testimonials = [
@@ -26,6 +27,7 @@ const plans = [
 ];
 
 export default function Landing() {
+  const { user } = useAuth();
   return (
     <div className="min-h-screen bg-dark-950 text-white overflow-hidden">
       {/* Nav */}
@@ -153,14 +155,25 @@ export default function Landing() {
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {features.map((f, i) => {
               const Icon = f.icon;
+              const targetPath = user ? f.path : '/login';
+              const hoverBorderColors = {
+                'from-primary-500 to-primary-700': 'hover:border-primary-500/40 hover:shadow-primary-500/5',
+                'from-cyan-500 to-cyan-700': 'hover:border-cyan-500/40 hover:shadow-cyan-500/5',
+                'from-violet-500 to-violet-700': 'hover:border-violet-500/40 hover:shadow-violet-500/5',
+                'from-emerald-500 to-emerald-700': 'hover:border-emerald-500/40 hover:shadow-emerald-500/5',
+                'from-amber-500 to-amber-700': 'hover:border-amber-500/40 hover:shadow-amber-500/5',
+                'from-rose-500 to-rose-700': 'hover:border-rose-500/40 hover:shadow-rose-500/5',
+              };
+              
               return (
-                <motion.div key={i} initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp} transition={{ delay: i * 0.1 }}
-                  className="group p-6 rounded-2xl bg-dark-900/50 border border-dark-800/50 hover:border-primary-500/30 transition-all duration-300 hover:-translate-y-1">
-                  <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${f.color} flex items-center justify-center mb-4 shadow-lg group-hover:scale-110 transition-transform`}>
-                    <Icon className="w-6 h-6 text-white" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-white mb-2">{f.title}</h3>
-                  <p className="text-dark-400 text-sm leading-relaxed">{f.desc}</p>
+                <motion.div key={i} initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp} transition={{ delay: i * 0.1 }}>
+                  <Link to={targetPath} className={`block group p-6 rounded-2xl bg-dark-900/50 border border-dark-800/50 ${hoverBorderColors[f.color]} hover:bg-dark-900/80 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer`}>
+                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${f.color} flex items-center justify-center mb-4 shadow-lg group-hover:scale-110 transition-transform`}>
+                      <Icon className="w-6 h-6 text-white" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-white mb-2 group-hover:text-primary-400 transition-colors">{f.title}</h3>
+                    <p className="text-dark-400 text-sm leading-relaxed">{f.desc}</p>
+                  </Link>
                 </motion.div>
               );
             })}
